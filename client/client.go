@@ -2,31 +2,31 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"log"
-	"flag"
 
-	"github.com/sjsafranek/logger"
 	"github.com/schollz/progressbar/v3"
 	"github.com/sjsafranek/gosync/fileutils"
 	pb "github.com/sjsafranek/gosync/gosync"
+	"github.com/sjsafranek/logger"
 	grpc "google.golang.org/grpc"
 	insecure "google.golang.org/grpc/credentials/insecure"
 )
 
 const (
-	DEFAULT_CHUNK_SIZE int = 64
-	DEFAULT_HOST string = "localhost"
-	DEFAULT_PORT int    = 9622
-	DEFAULT_FORCE bool = false
+	DEFAULT_CHUNK_SIZE int    = 64
+	DEFAULT_HOST       string = "localhost"
+	DEFAULT_PORT       int    = 9622
+	DEFAULT_FORCE      bool   = false
 )
 
 func main() {
 	var upload_file string
 	var chunk_size int
-	var host   string
-	var port   int
+	var host string
+	var port int
 	var force bool
 	flag.StringVar(&upload_file, "file", "", "File to upload")
 	flag.BoolVar(&force, "force", DEFAULT_FORCE, "Force")
@@ -80,7 +80,7 @@ func main() {
 		Filename:    upload_file,
 		Md5Checksum: checksum,
 		TotalSize:   total_size,
-		Overwrite: 	 force,
+		Overwrite:   force,
 	}
 	stream.Send(request)
 
@@ -88,9 +88,9 @@ func main() {
 	for chunk := range queue {
 		progress.Add(len(chunk))
 		err = stream.Send(&pb.Request{
-			Filename:    upload_file,
-			Chunk:      chunk,
-			Offset:     offset,
+			Filename: upload_file,
+			Chunk:    chunk,
+			Offset:   offset,
 		})
 		if nil != err {
 			panic(err)
