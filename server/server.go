@@ -41,10 +41,6 @@ type transfer struct {
 	BytesWritten  int64
 }
 
-func newResponse(state pb.State) *pb.Response {
-	return &pb.Response{State: state}
-}
-
 type service struct {
 	pb.UnimplementedGoSyncServiceServer
 	lock      sync.RWMutex
@@ -69,7 +65,7 @@ func (self *service) transferExists(transfer_id string) bool {
 }
 
 func (self *service) createTransferIfNotExists(request *pb.Request) error {
-	transfer_id := crypto.MD5(request.Filename)
+	transfer_id := crypto.MD5(request.FileDetails.Filename)
 
 	// Check if transfer already exists
 	if self.transferExists(transfer_id) {
@@ -88,7 +84,7 @@ func (self *service) createTransferIfNotExists(request *pb.Request) error {
 	// }
 
 	// Create empty file
-	file, err := os.OpenFile(request.Filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	file, err := os.OpenFile(request.FileDetails.Filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if nil != err {
 		return err
 	}
@@ -100,7 +96,7 @@ func (self *service) createTransferIfNotExists(request *pb.Request) error {
 		File:          file,
 		StartTime:     time.Now(),
 		UpdateTime:    time.Now(),
-		BytesExpected: request.TotalSize,
+		BytesExpected: request.FileDetails.Size,
 		BytesWritten:  0,
 	}
 
@@ -131,14 +127,14 @@ func (self *service) UploadFile(stream pb.GoSyncService_UploadFileServer) error 
 		request, err := stream.Recv()
 		if err == io.EOF {
 			return stream.SendAndClose(&pb.Response{
-				State: pb.State_Complete,
+				Status: pb.ResponseStatus_Ok,
 			})
 		} else if nil != err {
 			return err
 		}
 
 		// Get transfer id
-		transfer_id := crypto.MD5(request.Filename)
+		transfer_id := crypto.MD5(request.FileDetails.Filename)
 		tracking[transfer_id] = true
 
 		// Start a new transfer if needed
@@ -148,7 +144,7 @@ func (self *service) UploadFile(stream pb.GoSyncService_UploadFileServer) error 
 		}
 
 		// Check if data has been recieved
-		if nil != request.Chunk {
+		if nil != request.FileChunk.Chunk {
 			// Get transfer job
 			transfer, err := self.getTransferById(transfer_id)
 			if nil != err {
@@ -157,7 +153,7 @@ func (self *service) UploadFile(stream pb.GoSyncService_UploadFileServer) error 
 
 			// Write Chunk
 			logger.Debugf("Writing Transfer(%v) chunk", transfer_id)
-			n, err := transfer.File.WriteAt(request.Chunk, request.Offset)
+			n, err := transfer.File.WriteAt(request.FileChunk.Chunk, request.FileChunk.Offset)
 			if nil != err {
 				return err
 			}

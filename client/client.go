@@ -7,8 +7,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/schollz/progressbar/v3"
-	"github.com/sjsafranek/gosync/fileutils"
+	"github.com/sjsafranek/gosync/service"
 	pb "github.com/sjsafranek/gosync/gosync"
 	"github.com/sjsafranek/logger"
 	grpc "google.golang.org/grpc"
@@ -21,6 +20,36 @@ const (
 	DEFAULT_PORT       int    = 9622
 	DEFAULT_FORCE      bool   = false
 )
+
+func uploadFileToServer(client pb.GoSyncServiceClient, filename string, chunk_size int) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	return uploadFileToServerWithContext(ctx, client, filename, chunk_size)
+}
+
+func uploadFileToServerWithContext(ctx context.Context, client pb.GoSyncServiceClient, filename string, chunk_size int) error {
+	logger.Infof("Starting file upload: %v", filename)
+
+	// Start streaming client
+	stream, err := client.UploadFile(ctx)
+	if nil != err {
+		return err
+	}
+	
+	// Upload file to server
+	err = service.StreamFile(stream, filename, chunk_size, true)
+	if nil != err {
+		return err
+	}
+
+	reply, err := stream.CloseAndRecv()
+	if nil != err && io.EOF != err {
+		return err
+	}
+	logger.Info(reply)
+
+	return err
+}
 
 func main() {
 	var upload_file string
@@ -50,58 +79,37 @@ func main() {
 	// Setup client
 	client := pb.NewGoSyncServiceClient(conn)
 
-	// UPLOAD FILE TO SERVER
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Collect file metadata
-	total_size := fileutils.GetFileSize(upload_file)
-	checksum := fileutils.GetMD5Checksum(upload_file)
-
-	// Read file in chunks
-	queue, err := fileutils.ReadFileInChunks(upload_file, chunk_size)
+	err = uploadFileToServerWithContext(ctx, client, upload_file, chunk_size)
 	if nil != err {
-		logger.Error(err)
 		panic(err)
 	}
 
-	// Start streaming client
-	stream, err := client.UploadFile(ctx)
-	if err != nil {
-		logger.Error(err)
-		panic(err) // dont use panic in your real project
-	}
+	// // UPLOAD FILE TO SERVER
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
 
-	// Create progress bar
-	progress := progressbar.DefaultBytes(total_size, upload_file)
+	// // Start streaming client
+	// stream, err := client.UploadFile(ctx)
+	// if nil != err {
+	// 	logger.Error(err)
+	// 	panic(err) // dont use panic in your real project
+	// }
+	
+	// // Upload file to server
+	// err = service.StreamFile(stream, upload_file, chunk_size, true)
+	// if nil != err {
+	// 	logger.Error(err)
+	// 	panic(err) // dont use panic in your real project
+	// }
 
-	// Start file transfer
-	request := &pb.Request{
-		Filename:    upload_file,
-		Md5Checksum: checksum,
-		TotalSize:   total_size,
-		Overwrite:   force,
-	}
-	stream.Send(request)
-
-	var offset int64 = 0
-	for chunk := range queue {
-		progress.Add(len(chunk))
-		err = stream.Send(&pb.Request{
-			Filename: upload_file,
-			Chunk:    chunk,
-			Offset:   offset,
-		})
-		if nil != err {
-			panic(err)
-		}
-		offset += int64(len(chunk))
-	}
-
-	reply, err := stream.CloseAndRecv()
-	if nil != err && io.EOF != err {
-		panic(err)
-	}
-	logger.Info(reply)
-
+	// reply, err := stream.CloseAndRecv()
+	// if nil != err && io.EOF != err {
+	// 	panic(err)
+	// }
+	// logger.Info(reply)
 }
+
+

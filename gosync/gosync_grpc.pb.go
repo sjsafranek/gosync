@@ -22,9 +22,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GoSyncServiceClient interface {
-	// rpc StartTransfer (StartRequest) returns (Response) {}
-	// rpc UploadChunk (ChunkRequest) returns (Response) {}
 	Authenticate(ctx context.Context, opts ...grpc.CallOption) (GoSyncService_AuthenticateClient, error)
+	GetFileDetails(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error)
 	UploadFile(ctx context.Context, opts ...grpc.CallOption) (GoSyncService_UploadFileClient, error)
 	DownloadFile(ctx context.Context, in *Request, opts ...grpc.CallOption) (GoSyncService_DownloadFileClient, error)
 }
@@ -66,6 +65,15 @@ func (x *goSyncServiceAuthenticateClient) Recv() (*Response, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+func (c *goSyncServiceClient) GetFileDetails(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, "/GoSyncService/GetFileDetails", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *goSyncServiceClient) UploadFile(ctx context.Context, opts ...grpc.CallOption) (GoSyncService_UploadFileClient, error) {
@@ -138,9 +146,8 @@ func (x *goSyncServiceDownloadFileClient) Recv() (*Response, error) {
 // All implementations must embed UnimplementedGoSyncServiceServer
 // for forward compatibility
 type GoSyncServiceServer interface {
-	// rpc StartTransfer (StartRequest) returns (Response) {}
-	// rpc UploadChunk (ChunkRequest) returns (Response) {}
 	Authenticate(GoSyncService_AuthenticateServer) error
+	GetFileDetails(context.Context, *Request) (*Response, error)
 	UploadFile(GoSyncService_UploadFileServer) error
 	DownloadFile(*Request, GoSyncService_DownloadFileServer) error
 	mustEmbedUnimplementedGoSyncServiceServer()
@@ -152,6 +159,9 @@ type UnimplementedGoSyncServiceServer struct {
 
 func (UnimplementedGoSyncServiceServer) Authenticate(GoSyncService_AuthenticateServer) error {
 	return status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
+}
+func (UnimplementedGoSyncServiceServer) GetFileDetails(context.Context, *Request) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFileDetails not implemented")
 }
 func (UnimplementedGoSyncServiceServer) UploadFile(GoSyncService_UploadFileServer) error {
 	return status.Errorf(codes.Unimplemented, "method UploadFile not implemented")
@@ -196,6 +206,24 @@ func (x *goSyncServiceAuthenticateServer) Recv() (*Request, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+func _GoSyncService_GetFileDetails_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GoSyncServiceServer).GetFileDetails(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/GoSyncService/GetFileDetails",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GoSyncServiceServer).GetFileDetails(ctx, req.(*Request))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _GoSyncService_UploadFile_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -251,7 +279,12 @@ func (x *goSyncServiceDownloadFileServer) Send(m *Response) error {
 var GoSyncService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "GoSyncService",
 	HandlerType: (*GoSyncServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetFileDetails",
+			Handler:    _GoSyncService_GetFileDetails_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Authenticate",
