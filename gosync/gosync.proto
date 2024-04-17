@@ -3,11 +3,16 @@ syntax = "proto3";
 option go_package = "github.com/sjsafranek/gosync";
 
 service GoSyncService {
-  rpc Authenticate (stream Request) returns (stream Response) {}
-  rpc GetFileDetails (Request) returns (Response) {}
+  rpc Authenticate (stream FilePayload) returns (stream FilePayload) {}
+  rpc GetFileDetails (FilePayload) returns (FilePayload) {}
 
-  rpc UploadFile (stream Request) returns (Response) {}
-  rpc DownloadFile (Request) returns (stream Response) {}
+  rpc UploadFile (stream FilePayload) returns (FilePayload) {}
+  rpc DownloadFile (FilePayload) returns (stream FilePayload) {}
+}
+
+message FileChunk {
+  bytes Chunk = 1;
+  int64 Offset = 2; 
 }
 
 message FileDetails {
@@ -16,26 +21,28 @@ message FileDetails {
   int64 Size = 3;
 }
 
-message FileChunk {
-  bytes Chunk = 1;
-  int64 Offset = 2; 
+message FileOptions {
+  int32 ChunkSize = 1;
+  bool Encryption = 2;
 }
 
-message Request {
-  FileDetails FileDetails = 1;
-  FileChunk FileChunk = 2;
-}
+//message Request {
+//  FileDetails FileDetails = 1;
+//  FileChunk FileChunk = 2;
+//  FileOptions FileOptions = 3;
+//}
 
-enum ResponseStatus {
+enum Status {
   Ok = 0;
   Continue = 1;
   Error = 2;
 }
 
-message Response {
-  ResponseStatus Status = 1;
+message FilePayload {
+  Status Status = 1;
   FileDetails FileDetails = 2;
   FileChunk FileChunk = 3;
+  FileOptions FileOptions = 4;  
 }
 
 

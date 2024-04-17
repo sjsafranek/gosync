@@ -1,17 +1,23 @@
 package service
 
 import (
+	//"github.com/sjsafranek/logger"
 	"github.com/schollz/progressbar/v3"
 
 	"github.com/sjsafranek/gosync/fileutils"
 	pb "github.com/sjsafranek/gosync/gosync"
 )
 
-type IStream interface {
-	Send(*pb.Request) error
+type iSender interface {
+	Send(*pb.FilePayload) error
 }
 
-func StreamFile(stream IStream, filename string, chunk_size int, show_progress bool) error {
+func SendFile(stream iSender, filename string, chunk_size int32, show_progress bool) error {
+	// Check parameters
+    if 0 >= chunk_size {
+        chunk_size = DEFAULT_CHUNK_SIZE
+    }	
+
 	// Collect file metadata
 	total_size := fileutils.GetFileSize(filename)
 	checksum := fileutils.GetMD5Checksum(filename)
@@ -34,7 +40,7 @@ func StreamFile(stream IStream, filename string, chunk_size int, show_progress b
 		if nil != progress {
 			progress.Add(len(chunk))
 		}
-		err = stream.Send(&pb.Request{
+		err = stream.Send(&pb.FilePayload{
 			FileDetails: &pb.FileDetails{
 				Filename: filename,
 				MD5Checksum: checksum,

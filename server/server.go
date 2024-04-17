@@ -1,14 +1,14 @@
 package main
 
 import (
-	"errors"
+	// "errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
 	"sync"
-	"time"
+	// "time"
 	//"context"
 	"os/signal"
 	"syscall"
@@ -19,7 +19,8 @@ import (
 
 	"github.com/sjsafranek/logger"
 	// "github.com/sjsafranek/gosync/fileutils"
-	"github.com/sjsafranek/gosync/crypto"
+	// "github.com/sjsafranek/gosync/crypto"
+    "github.com/sjsafranek/gosync/service"
 	pb "github.com/sjsafranek/gosync/gosync"
 )
 
@@ -33,146 +34,26 @@ var (
 	port int    = DEFAULT_PORT
 )
 
-type transfer struct {
-	File          *os.File
-	StartTime     time.Time
-	UpdateTime    time.Time
-	BytesExpected int64
-	BytesWritten  int64
-}
-
-type service struct {
+type server struct {
 	pb.UnimplementedGoSyncServiceServer
-	lock      sync.RWMutex
-	transfers map[string]*transfer
 }
 
-func (self *service) getTransferById(transfer_id string) (*transfer, error) {
-	self.lock.RLock()
-	defer self.lock.RUnlock()
-	transfer, ok := self.transfers[transfer_id]
-	if !ok {
-		return nil, errors.New("Transfer does not exist")
+func (self *server) UploadFile(stream pb.GoSyncService_UploadFileServer) error {
+	err := service.RecvFile(stream)
+	if err == io.EOF {
+		return stream.SendAndClose(&pb.FilePayload{
+			Status: pb.Status_Ok,
+		})
 	}
-	return transfer, nil
+	return err
 }
 
-func (self *service) transferExists(transfer_id string) bool {
-	self.lock.RLock()
-	defer self.lock.RUnlock()
-	_, ok := self.transfers[transfer_id]
-	return ok
+func (self *server) DownloadFile(request *pb.FilePayload, stream pb.GoSyncService_DownloadFileServer) error {
+    return service.SendFile(stream, request.FileDetails.Filename, request.FileOptions.ChunkSize, false) 
 }
 
-func (self *service) createTransferIfNotExists(request *pb.Request) error {
-	transfer_id := crypto.MD5(request.FileDetails.Filename)
-
-	// Check if transfer already exists
-	if self.transferExists(transfer_id) {
-		return nil
-	}
-
-	// // Check if file already exists
-	// filename := request.Filename
-	// if !request.Overwrite {
-	//     if fileutils.Exists(filename) {
-	//         if fileutils.GetMD5Checksum(filename) == request.Md5Checksum {
-	//             logger.Warn("File already exists")
-	//             return errors.New("File already exists")
-	//         }
-	//     }
-	// }
-
-	// Create empty file
-	file, err := os.OpenFile(request.FileDetails.Filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
-	if nil != err {
-		return err
-	}
-
-	// Create new transfer
-	self.lock.Lock()
-	defer self.lock.Unlock()
-	self.transfers[transfer_id] = &transfer{
-		File:          file,
-		StartTime:     time.Now(),
-		UpdateTime:    time.Now(),
-		BytesExpected: request.FileDetails.Size,
-		BytesWritten:  0,
-	}
-
-	return nil
-}
-
-func (self *service) deleteTransferByTransferIdIfExists(transfer_id string) error {
-	transfer, _ := self.getTransferById(transfer_id)
-	if nil != transfer {
-		logger.Debugf("Transfer(%v) complete", transfer_id)
-		self.lock.Lock()
-		defer self.lock.Unlock()
-		transfer.File.Close()
-		delete(self.transfers, transfer_id)
-	}
-	return nil
-}
-
-func (self *service) UploadFile(stream pb.GoSyncService_UploadFileServer) error {
-	tracking := make(map[string]bool)
-	defer func() {
-		for transfer_id := range tracking {
-			self.deleteTransferByTransferIdIfExists(transfer_id)
-		}
-	}()
-
-	for {
-		request, err := stream.Recv()
-		if err == io.EOF {
-			return stream.SendAndClose(&pb.Response{
-				Status: pb.ResponseStatus_Ok,
-			})
-		} else if nil != err {
-			return err
-		}
-
-		// Get transfer id
-		transfer_id := crypto.MD5(request.FileDetails.Filename)
-		tracking[transfer_id] = true
-
-		// Start a new transfer if needed
-		err = self.createTransferIfNotExists(request)
-		if nil != err {
-			return err
-		}
-
-		// Check if data has been recieved
-		if nil != request.FileChunk.Chunk {
-			// Get transfer job
-			transfer, err := self.getTransferById(transfer_id)
-			if nil != err {
-				return err
-			}
-
-			// Write Chunk
-			logger.Debugf("Writing Transfer(%v) chunk", transfer_id)
-			n, err := transfer.File.WriteAt(request.FileChunk.Chunk, request.FileChunk.Offset)
-			if nil != err {
-				return err
-			}
-			transfer.BytesWritten += int64(n)
-			transfer.UpdateTime = time.Now()
-
-			if transfer.BytesWritten == transfer.BytesExpected {
-				logger.Infof("Transfer(%v) complete", transfer_id)
-				self.deleteTransferByTransferIdIfExists(transfer_id)
-			} else if transfer.BytesExpected < transfer.BytesWritten {
-				return errors.New("File size mismatch")
-			}
-		}
-
-	}
-}
-
-func newServiceServer() *service {
-	return &service{transfers: make(map[string]*transfer)}
+func new() *server {
+	return &server{}
 }
 
 func main() {
@@ -182,7 +63,7 @@ func main() {
 	// Setup server
 	var opts []grpc.ServerOption
 	server := grpc.NewServer(opts...)
-	pb.RegisterGoSyncServiceServer(server, newServiceServer())
+	pb.RegisterGoSyncServiceServer(server, new())
 
 	// Handle graceful shutdowns
 	sigCh := make(chan os.Signal, 1)

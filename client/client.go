@@ -15,19 +15,19 @@ import (
 )
 
 const (
-	DEFAULT_CHUNK_SIZE int    = 64
+	DEFAULT_CHUNK_SIZE int32    = 64
 	DEFAULT_HOST       string = "localhost"
 	DEFAULT_PORT       int    = 9622
 	DEFAULT_FORCE      bool   = false
 )
 
-func uploadFileToServer(client pb.GoSyncServiceClient, filename string, chunk_size int) error {
+func uploadFileToServer(client pb.GoSyncServiceClient, filename string, chunk_size int32) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	return uploadFileToServerWithContext(ctx, client, filename, chunk_size)
 }
 
-func uploadFileToServerWithContext(ctx context.Context, client pb.GoSyncServiceClient, filename string, chunk_size int) error {
+func uploadFileToServerWithContext(ctx context.Context, client pb.GoSyncServiceClient, filename string, chunk_size int32) error {
 	logger.Infof("Starting file upload: %v", filename)
 
 	// Start streaming client
@@ -37,7 +37,7 @@ func uploadFileToServerWithContext(ctx context.Context, client pb.GoSyncServiceC
 	}
 	
 	// Upload file to server
-	err = service.StreamFile(stream, filename, chunk_size, true)
+	err = service.SendFile(stream, filename, chunk_size, true)
 	if nil != err {
 		return err
 	}
@@ -51,18 +51,47 @@ func uploadFileToServerWithContext(ctx context.Context, client pb.GoSyncServiceC
 	return err
 }
 
+func downloadFileFromServer(client pb.GoSyncServiceClient, filename string, chunk_size int32) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	return downloadFileFromServerWithContext(ctx, client, filename, chunk_size)
+}
+
+func downloadFileFromServerWithContext(ctx context.Context, client pb.GoSyncServiceClient, filename string, chunk_size int32) error {
+	stream, err := client.DownloadFile(ctx, &pb.FilePayload{
+		FileDetails: &pb.FileDetails{
+			Filename: filename,
+		},
+		FileOptions: &pb.FileOptions{
+			ChunkSize: chunk_size,
+			Encryption: false,
+		},
+	})
+	if nil != err {
+		return err
+	}
+	err = service.RecvFile(stream)
+	if err == io.EOF {
+		return nil
+	}
+	return err
+}
+
 func main() {
-	var upload_file string
-	var chunk_size int
+	var filename string
+	var _chunk_size int
+	var chunk_size int32
 	var host string
 	var port int
 	var force bool
-	flag.StringVar(&upload_file, "file", "", "File to upload")
+	flag.StringVar(&filename, "file", "", "File to upload")
 	flag.BoolVar(&force, "force", DEFAULT_FORCE, "Force")
-	flag.IntVar(&chunk_size, "s", DEFAULT_CHUNK_SIZE, "Chunk size")
+	flag.IntVar(&_chunk_size, "s", int(DEFAULT_CHUNK_SIZE), "Chunk size")
 	flag.StringVar(&host, "h", DEFAULT_HOST, "Server Host")
 	flag.IntVar(&port, "p", DEFAULT_PORT, "Server Port")
 	flag.Parse()
+
+	chunk_size = int32(_chunk_size)
 
 	// Setup connection
 	var opts []grpc.DialOption
@@ -82,34 +111,15 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err = uploadFileToServerWithContext(ctx, client, upload_file, chunk_size)
+	// err = uploadFileToServerWithContext(ctx, client, filename, chunk_size)
+	// if nil != err {
+	// 	panic(err)
+	// }
+
+	err = downloadFileFromServerWithContext(ctx, client, filename, chunk_size)
 	if nil != err {
 		panic(err)
 	}
-
-	// // UPLOAD FILE TO SERVER
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-
-	// // Start streaming client
-	// stream, err := client.UploadFile(ctx)
-	// if nil != err {
-	// 	logger.Error(err)
-	// 	panic(err) // dont use panic in your real project
-	// }
-	
-	// // Upload file to server
-	// err = service.StreamFile(stream, upload_file, chunk_size, true)
-	// if nil != err {
-	// 	logger.Error(err)
-	// 	panic(err) // dont use panic in your real project
-	// }
-
-	// reply, err := stream.CloseAndRecv()
-	// if nil != err && io.EOF != err {
-	// 	panic(err)
-	// }
-	// logger.Info(reply)
 }
 
 

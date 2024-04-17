@@ -40,7 +40,7 @@ func GetFileSize(filename string) int64 {
 	return info.Size()
 }
 
-func ReadFileInChunks(filename string, chunk_size int) (chan []byte, error) {
+func ReadFileInChunks(filename string, chunk_size int32) (chan []byte, error) {
 	file, err := os.Open(filename)
 	if nil != err {
 		return nil, err

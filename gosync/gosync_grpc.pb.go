@@ -23,9 +23,9 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GoSyncServiceClient interface {
 	Authenticate(ctx context.Context, opts ...grpc.CallOption) (GoSyncService_AuthenticateClient, error)
-	GetFileDetails(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error)
+	GetFileDetails(ctx context.Context, in *FilePayload, opts ...grpc.CallOption) (*FilePayload, error)
 	UploadFile(ctx context.Context, opts ...grpc.CallOption) (GoSyncService_UploadFileClient, error)
-	DownloadFile(ctx context.Context, in *Request, opts ...grpc.CallOption) (GoSyncService_DownloadFileClient, error)
+	DownloadFile(ctx context.Context, in *FilePayload, opts ...grpc.CallOption) (GoSyncService_DownloadFileClient, error)
 }
 
 type goSyncServiceClient struct {
@@ -46,8 +46,8 @@ func (c *goSyncServiceClient) Authenticate(ctx context.Context, opts ...grpc.Cal
 }
 
 type GoSyncService_AuthenticateClient interface {
-	Send(*Request) error
-	Recv() (*Response, error)
+	Send(*FilePayload) error
+	Recv() (*FilePayload, error)
 	grpc.ClientStream
 }
 
@@ -55,20 +55,20 @@ type goSyncServiceAuthenticateClient struct {
 	grpc.ClientStream
 }
 
-func (x *goSyncServiceAuthenticateClient) Send(m *Request) error {
+func (x *goSyncServiceAuthenticateClient) Send(m *FilePayload) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *goSyncServiceAuthenticateClient) Recv() (*Response, error) {
-	m := new(Response)
+func (x *goSyncServiceAuthenticateClient) Recv() (*FilePayload, error) {
+	m := new(FilePayload)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *goSyncServiceClient) GetFileDetails(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error) {
-	out := new(Response)
+func (c *goSyncServiceClient) GetFileDetails(ctx context.Context, in *FilePayload, opts ...grpc.CallOption) (*FilePayload, error) {
+	out := new(FilePayload)
 	err := c.cc.Invoke(ctx, "/GoSyncService/GetFileDetails", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -86,8 +86,8 @@ func (c *goSyncServiceClient) UploadFile(ctx context.Context, opts ...grpc.CallO
 }
 
 type GoSyncService_UploadFileClient interface {
-	Send(*Request) error
-	CloseAndRecv() (*Response, error)
+	Send(*FilePayload) error
+	CloseAndRecv() (*FilePayload, error)
 	grpc.ClientStream
 }
 
@@ -95,22 +95,22 @@ type goSyncServiceUploadFileClient struct {
 	grpc.ClientStream
 }
 
-func (x *goSyncServiceUploadFileClient) Send(m *Request) error {
+func (x *goSyncServiceUploadFileClient) Send(m *FilePayload) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *goSyncServiceUploadFileClient) CloseAndRecv() (*Response, error) {
+func (x *goSyncServiceUploadFileClient) CloseAndRecv() (*FilePayload, error) {
 	if err := x.ClientStream.CloseSend(); err != nil {
 		return nil, err
 	}
-	m := new(Response)
+	m := new(FilePayload)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *goSyncServiceClient) DownloadFile(ctx context.Context, in *Request, opts ...grpc.CallOption) (GoSyncService_DownloadFileClient, error) {
+func (c *goSyncServiceClient) DownloadFile(ctx context.Context, in *FilePayload, opts ...grpc.CallOption) (GoSyncService_DownloadFileClient, error) {
 	stream, err := c.cc.NewStream(ctx, &GoSyncService_ServiceDesc.Streams[2], "/GoSyncService/DownloadFile", opts...)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (c *goSyncServiceClient) DownloadFile(ctx context.Context, in *Request, opt
 }
 
 type GoSyncService_DownloadFileClient interface {
-	Recv() (*Response, error)
+	Recv() (*FilePayload, error)
 	grpc.ClientStream
 }
 
@@ -134,8 +134,8 @@ type goSyncServiceDownloadFileClient struct {
 	grpc.ClientStream
 }
 
-func (x *goSyncServiceDownloadFileClient) Recv() (*Response, error) {
-	m := new(Response)
+func (x *goSyncServiceDownloadFileClient) Recv() (*FilePayload, error) {
+	m := new(FilePayload)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -147,9 +147,9 @@ func (x *goSyncServiceDownloadFileClient) Recv() (*Response, error) {
 // for forward compatibility
 type GoSyncServiceServer interface {
 	Authenticate(GoSyncService_AuthenticateServer) error
-	GetFileDetails(context.Context, *Request) (*Response, error)
+	GetFileDetails(context.Context, *FilePayload) (*FilePayload, error)
 	UploadFile(GoSyncService_UploadFileServer) error
-	DownloadFile(*Request, GoSyncService_DownloadFileServer) error
+	DownloadFile(*FilePayload, GoSyncService_DownloadFileServer) error
 	mustEmbedUnimplementedGoSyncServiceServer()
 }
 
@@ -160,13 +160,13 @@ type UnimplementedGoSyncServiceServer struct {
 func (UnimplementedGoSyncServiceServer) Authenticate(GoSyncService_AuthenticateServer) error {
 	return status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
 }
-func (UnimplementedGoSyncServiceServer) GetFileDetails(context.Context, *Request) (*Response, error) {
+func (UnimplementedGoSyncServiceServer) GetFileDetails(context.Context, *FilePayload) (*FilePayload, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFileDetails not implemented")
 }
 func (UnimplementedGoSyncServiceServer) UploadFile(GoSyncService_UploadFileServer) error {
 	return status.Errorf(codes.Unimplemented, "method UploadFile not implemented")
 }
-func (UnimplementedGoSyncServiceServer) DownloadFile(*Request, GoSyncService_DownloadFileServer) error {
+func (UnimplementedGoSyncServiceServer) DownloadFile(*FilePayload, GoSyncService_DownloadFileServer) error {
 	return status.Errorf(codes.Unimplemented, "method DownloadFile not implemented")
 }
 func (UnimplementedGoSyncServiceServer) mustEmbedUnimplementedGoSyncServiceServer() {}
@@ -187,8 +187,8 @@ func _GoSyncService_Authenticate_Handler(srv interface{}, stream grpc.ServerStre
 }
 
 type GoSyncService_AuthenticateServer interface {
-	Send(*Response) error
-	Recv() (*Request, error)
+	Send(*FilePayload) error
+	Recv() (*FilePayload, error)
 	grpc.ServerStream
 }
 
@@ -196,12 +196,12 @@ type goSyncServiceAuthenticateServer struct {
 	grpc.ServerStream
 }
 
-func (x *goSyncServiceAuthenticateServer) Send(m *Response) error {
+func (x *goSyncServiceAuthenticateServer) Send(m *FilePayload) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *goSyncServiceAuthenticateServer) Recv() (*Request, error) {
-	m := new(Request)
+func (x *goSyncServiceAuthenticateServer) Recv() (*FilePayload, error) {
+	m := new(FilePayload)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (x *goSyncServiceAuthenticateServer) Recv() (*Request, error) {
 }
 
 func _GoSyncService_GetFileDetails_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Request)
+	in := new(FilePayload)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func _GoSyncService_GetFileDetails_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/GoSyncService/GetFileDetails",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoSyncServiceServer).GetFileDetails(ctx, req.(*Request))
+		return srv.(GoSyncServiceServer).GetFileDetails(ctx, req.(*FilePayload))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -231,8 +231,8 @@ func _GoSyncService_UploadFile_Handler(srv interface{}, stream grpc.ServerStream
 }
 
 type GoSyncService_UploadFileServer interface {
-	SendAndClose(*Response) error
-	Recv() (*Request, error)
+	SendAndClose(*FilePayload) error
+	Recv() (*FilePayload, error)
 	grpc.ServerStream
 }
 
@@ -240,12 +240,12 @@ type goSyncServiceUploadFileServer struct {
 	grpc.ServerStream
 }
 
-func (x *goSyncServiceUploadFileServer) SendAndClose(m *Response) error {
+func (x *goSyncServiceUploadFileServer) SendAndClose(m *FilePayload) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *goSyncServiceUploadFileServer) Recv() (*Request, error) {
-	m := new(Request)
+func (x *goSyncServiceUploadFileServer) Recv() (*FilePayload, error) {
+	m := new(FilePayload)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func (x *goSyncServiceUploadFileServer) Recv() (*Request, error) {
 }
 
 func _GoSyncService_DownloadFile_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Request)
+	m := new(FilePayload)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -261,7 +261,7 @@ func _GoSyncService_DownloadFile_Handler(srv interface{}, stream grpc.ServerStre
 }
 
 type GoSyncService_DownloadFileServer interface {
-	Send(*Response) error
+	Send(*FilePayload) error
 	grpc.ServerStream
 }
 
@@ -269,7 +269,7 @@ type goSyncServiceDownloadFileServer struct {
 	grpc.ServerStream
 }
 
-func (x *goSyncServiceDownloadFileServer) Send(m *Response) error {
+func (x *goSyncServiceDownloadFileServer) Send(m *FilePayload) error {
 	return x.ServerStream.SendMsg(m)
 }
 
