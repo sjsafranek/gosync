@@ -4,22 +4,36 @@ option go_package = "github.com/sjsafranek/gosync";
 
 // Service
 service GoSyncService {
-  rpc StartTransfer (StartRequest) returns (Response) {}
-  rpc UploadChunk (ChunkRequest) returns (Response) {}
+  //rpc StartTransfer (StartRequest) returns (Response) {}
+  //rpc UploadChunk (ChunkRequest) returns (Response) {}
+  
+  rpc Authenticate (stream Request) returns (stream Response) {}
+  
+  rpc UploadFile (stream Request) returns (Response) {}
+  rpc DownloadFile (Request) returns (stream Response) {}
+}
+
+message Request {
+  string filename = 1;
+  string md5checksum = 2;
+  int64 total_size = 3;
+  bool overwrite = 4;
+  bytes chunk = 5;
+  int64 offset = 6; 
 }
 
 // Requests
-message StartRequest {
-  string filename = 1;
-  string md5checksum = 2;
-  int64 size = 3;
-}
-
-message ChunkRequest {
-  string transfer_id = 1;
-  bytes chunk = 2;
-  int64 offset = 3;
-}
+//message StartRequest {
+//  string filename = 1;
+//  string md5checksum = 2;
+//  int64 total_size = 3;
+//  bool overwrite = 4;
+//}
+//message ChunkRequest {
+//  string transfer_id = 1;
+//  bytes chunk = 2;
+//  int64 offset = 3;
+//}
 
 // Response
 enum State {
@@ -30,5 +44,5 @@ enum State {
 
 message Response {
   State state = 1;
-  string transfer_id = 2;
+  //string transfer_id = 2;
 }
