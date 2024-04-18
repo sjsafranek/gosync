@@ -70,7 +70,7 @@ func downloadFileFromServerWithContext(ctx context.Context, client pb.GoSyncServ
 	if nil != err {
 		return err
 	}
-	err = service.RecvFile(stream)
+	err = service.RecvFile(stream, "./")
 	if err == io.EOF {
 		return nil
 	}
@@ -111,15 +111,28 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// err = uploadFileToServerWithContext(ctx, client, filename, chunk_size)
-	// if nil != err {
-	// 	panic(err)
-	// }
+	err = uploadFileToServerWithContext(ctx, client, filename, chunk_size)
+	if nil != err {
+		panic(err)
+	}
 
 	err = downloadFileFromServerWithContext(ctx, client, filename, chunk_size)
 	if nil != err {
 		panic(err)
 	}
+
+	response, err := client.GetFileDetails(ctx, &pb.FilePayload{
+		FileDetails: &pb.FileDetails{
+			Filename: filename,
+		},
+		FileOptions: &pb.FileOptions{
+			ChunkSize: chunk_size,
+		},
+	})
+	if nil != err {
+		panic(err)
+	}
+	logger.Info(response)
 }
 
 

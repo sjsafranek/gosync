@@ -4,15 +4,23 @@ option go_package = "github.com/sjsafranek/gosync";
 
 service GoSyncService {
   rpc Authenticate (stream FilePayload) returns (stream FilePayload) {}
-  rpc GetFileDetails (FilePayload) returns (FilePayload) {}
 
+  rpc GetFileDetails (FilePayload) returns (FilePayload) {}
   rpc UploadFile (stream FilePayload) returns (FilePayload) {}
   rpc DownloadFile (FilePayload) returns (stream FilePayload) {}
+}
+
+
+enum Status {
+  Ok = 0;
+  Continue = 1;
+  Error = 2;
 }
 
 message FileChunk {
   bytes Chunk = 1;
   int64 Offset = 2; 
+  string MD5Checksum = 3;
 }
 
 message FileDetails {
@@ -26,23 +34,12 @@ message FileOptions {
   bool Encryption = 2;
 }
 
-//message Request {
-//  FileDetails FileDetails = 1;
-//  FileChunk FileChunk = 2;
-//  FileOptions FileOptions = 3;
-//}
-
-enum Status {
-  Ok = 0;
-  Continue = 1;
-  Error = 2;
-}
-
 message FilePayload {
   Status Status = 1;
   FileDetails FileDetails = 2;
-  FileChunk FileChunk = 3;
-  FileOptions FileOptions = 4;  
+  FileOptions FileOptions = 3;  
+  FileChunk FileChunk = 4;
+  repeated FileChunk FileChunks = 5;
 }
 
 

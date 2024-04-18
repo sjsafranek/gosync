@@ -2,11 +2,14 @@ package service
 
 import (
 	"os"
+	"path"
+	"path/filepath"
 	"time"
 	"sync"
 	"errors"
 
 	"github.com/sjsafranek/logger"
+	// "github.com/sjsafranek/gosync/fileutils"
 	"github.com/sjsafranek/gosync/crypto"
 	pb "github.com/sjsafranek/gosync/gosync"
 )
@@ -33,16 +36,30 @@ func (self *transferManager) Exists(transfer_id string) bool {
 	return ok
 }
 
-func (self *transferManager) CreateIfNotExists(request *pb.FilePayload) error {
-	transfer_id := crypto.MD5(request.FileDetails.Filename)
+func (self *transferManager) CreateIfNotExists(request *pb.FilePayload, directory string) error {
+	transfer_id := crypto.MD5FromString(request.FileDetails.Filename)
 
 	// Check if transfer already exists
 	if self.Exists(transfer_id) {
 		return nil
 	}
 
+	// // Create output directory if needed
+	// err := fileutils.MakeDirectoryIfNotExists(directory)
+	// if nil != err {
+	// 	return err
+	// }
+
+	// Determine file path
+	filename := path.Join(directory, request.FileDetails.Filename)
+
+	logger.Info(filename)
+
+	// Make sure all directories exist
+	os.MkdirAll(filepath.Dir(filename), 0700)
+
 	// Create empty file
-	file, err := os.OpenFile(request.FileDetails.Filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if nil != err {
 		return err
 	}

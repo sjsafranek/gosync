@@ -1,9 +1,13 @@
 package service
 
 import (
-	//"github.com/sjsafranek/logger"
+	// "path"
+	// "path/filepath"
+
+	// "github.com/sjsafranek/logger"
 	"github.com/schollz/progressbar/v3"
 
+	"github.com/sjsafranek/gosync/crypto"
 	"github.com/sjsafranek/gosync/fileutils"
 	pb "github.com/sjsafranek/gosync/gosync"
 )
@@ -16,7 +20,13 @@ func SendFile(stream iSender, filename string, chunk_size int32, show_progress b
 	// Check parameters
     if 0 >= chunk_size {
         chunk_size = DEFAULT_CHUNK_SIZE
-    }	
+    }
+
+    //
+	//filepath := filename
+    //if !fileutils.Exists(filename) && fileutils.Exists(path.Join(directory, filename)) {
+    //	filepath = path.Join(directory, filename)
+    //}
 
 	// Collect file metadata
 	total_size := fileutils.GetFileSize(filename)
@@ -42,6 +52,7 @@ func SendFile(stream iSender, filename string, chunk_size int32, show_progress b
 		}
 		err = stream.Send(&pb.FilePayload{
 			FileDetails: &pb.FileDetails{
+				// Filename: filepath.Base(filename),
 				Filename: filename,
 				MD5Checksum: checksum,
 				Size:   total_size,
@@ -49,6 +60,7 @@ func SendFile(stream iSender, filename string, chunk_size int32, show_progress b
 			FileChunk: &pb.FileChunk{
 				Chunk:    chunk,
 				Offset:   offset,
+				MD5Checksum: crypto.MD5FromBytes(chunk),
 			},
 		})
 		if nil != err {

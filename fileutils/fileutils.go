@@ -2,12 +2,19 @@ package fileutils
 
 import (
 	"bufio"
-	"crypto/md5"
+	"crypto/md5"	
 	"encoding/hex"
 	"io"
 	"log"
 	"os"
 )
+
+func MakeDirectoryIfNotExists(directory string) error {
+	if _, err := os.Stat(directory); os.IsNotExist(err) {
+    	return os.Mkdir(directory, os.ModeDir)
+	}
+	return nil
+}
 
 // Exists reports whether the named file or directory exists.
 func Exists(pathname string) bool {

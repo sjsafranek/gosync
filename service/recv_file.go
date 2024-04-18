@@ -14,7 +14,7 @@ type iReciever interface {
 	Recv() (*pb.FilePayload, error)
 }
 
-func RecvFile(stream iReciever) error {
+func RecvFile(stream iReciever, directory string) error {
 
 	tracking := make(map[string]bool)
 	defer func() {
@@ -31,11 +31,11 @@ func RecvFile(stream iReciever) error {
 		}
 		
 		// Get transfer id
-		transfer_id := crypto.MD5(request.FileDetails.Filename)
+		transfer_id := crypto.MD5FromString(request.FileDetails.Filename)
 		tracking[transfer_id] = true
 
 		// Start a new transfer if needed
-		err = manager.CreateIfNotExists(request)
+		err = manager.CreateIfNotExists(request, directory)
 		if nil != err {
 			return err
 		}

@@ -16,16 +16,29 @@ import (
 	// "golang.org/x/crypto/pbkdf2"
 )
 
-func MD5(plaintext string) string {
+
+func MD5FromBytes(bytes []byte,) string {
+	return hashBytes(bytes, md5.New())
+}
+
+func SHA256FromBytes(bytes []byte,) string {
+	return hashBytes(bytes, sha256.New())
+}
+
+func MD5FromString(plaintext string) string {
 	return hashString(plaintext, md5.New())
 }
 
-func SHA256(plaintext string) string {
+func SHA256FromString(plaintext string) string {
 	return hashString(plaintext, sha256.New())
 }
 
 func hashString(plaintext string, algo hash.Hash) string {
-	algo.Write([]byte(plaintext))
+	return hashBytes([]byte(plaintext), algo)
+}
+
+func hashBytes(bytes []byte, algo hash.Hash) string {
+	algo.Write(bytes)
 	return hex.EncodeToString(algo.Sum(nil))
 }
 
